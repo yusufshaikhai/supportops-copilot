@@ -319,7 +319,9 @@ def evaluate(
                 )
             )
 
-    labels = [category.value for category in Category if category is not Category.UNKNOWN]
+    labels = [
+        category.value for category in Category if category is not Category.UNKNOWN
+    ]
     return EvaluationResult(
         method=method,
         sample_count=len(expected_categories),
