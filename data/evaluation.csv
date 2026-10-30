@@ -1,0 +1,51 @@
+text,category,urgency
+The expected date passed and the box never showed up,shipping,normal
+Can you send purchase 811 to my workplace instead,shipping,normal
+The carrier page has shown in transit all week,shipping,normal
+Someone took the parcel from my doorstep and it is missing,shipping,urgent
+Has order 501 left your warehouse,shipping,normal
+Only one of the two cartons reached me,shipping,normal
+The driver went to a different apartment,shipping,normal
+I need an estimate for when this will reach me,shipping,normal
+Nothing was at the collection point when I visited,shipping,normal
+The courier cannot find my order and it is lost,shipping,urgent
+Please undo this purchase and put the funds back,refund,normal
+The unwanted curtains are still sealed,refund,normal
+I sent the product back but have not received the credit,refund,normal
+Can I swap this for the larger version,refund,normal
+The repayment covers only one item,refund,normal
+I would like to cancel before the warehouse sends it,refund,normal
+Do you provide a label for sending goods back,refund,normal
+This item is not suitable and I no longer want it,refund,normal
+How long does a bank reversal normally take,refund,normal
+Could the store credit be paid to my bank instead,refund,normal
+The wooden panel is warped and will not fit,damaged_item,normal
+The glass arrived shattered and needs urgent replacement,damaged_item,urgent
+One of the legs is snapped,damaged_item,urgent
+The fabric has a large tear,damaged_item,normal
+The motor makes noise but the desk will not move,damaged_item,normal
+Every corner has been chipped,damaged_item,normal
+The assembly bag has missing parts,damaged_item,urgent
+The door is bent and cannot close,damaged_item,normal
+This unit stopped functioning after two hours,damaged_item,normal
+The product inside the box was broken,damaged_item,urgent
+The bank amount is greater than the checkout total,billing,normal
+I need proof of purchase for expenses,billing,normal
+My promo code vanished on the final screen,billing,normal
+Two pending payments appear for one basket,billing,urgent
+The business name is wrong on the invoice,billing,normal
+Checkout refuses every debit card I try,billing,normal
+Please explain why an extra service fee was added,billing,normal
+The tax calculation does not look right,billing,normal
+I see an unauthorized transaction from your shop,billing,urgent
+The order failed even though the bank approved the amount,billing,normal
+The confirmation link is no longer valid,account,normal
+I cannot get into my customer profile,account,normal
+Please change the phone number linked to me,account,normal
+The recovery email has not appeared,account,normal
+I am locked out and need access immediately,account,urgent
+My saved delivery locations are gone,account,normal
+Another person's details appear after I sign in,account,urgent
+I do not remember which email I used to register,account,normal
+The one time sign in code keeps failing,account,normal
+Please remove my customer profile permanently,account,normal
