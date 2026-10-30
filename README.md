@@ -132,21 +132,7 @@ Both data files contain:
 | `category` | Expected routing category |
 | `urgency` | Expected `normal` or `urgent` priority |
 
-## Changes made
+## Change history and next milestone
 
-- Added a 100-ticket training corpus and replaced the keyword-friendly
-  evaluation file with 50 differently worded held-out tickets.
-- Added a cached TF-IDF and logistic regression category classifier.
-- Kept deterministic category rules as the comparison baseline.
-- Kept explicit urgency rules as the current safety policy.
-- Added `--method rules|ml`, `evaluate`, and `compare` CLI paths.
-- Added misclassification details to evaluation output.
-- Added tests for paraphrased wording, low-confidence review, acceptance
-  metrics, and improvement over rules.
-- Updated this architecture record with the selected and deferred alternatives.
-
-## Next milestone
-
-Review the ML error list and improve data quality without editing the held-out
-labels to flatter the score. Once routing is credible, expose the prediction
-workflow through FastAPI and a minimal server-rendered review page.
+Per-milestone changes, decisions, deferred alternatives, and the next question
+live in [`docs/milestones.md`](docs/milestones.md).
