@@ -3,6 +3,10 @@
 Milestone 2 compares a deterministic rules baseline with a trained text
 classifier for the fictional HarborHome Commerce support team.
 
+For the reasoning and learning history behind each milestone, read
+[`docs/milestones.md`](docs/milestones.md). The README describes the current
+system; the milestone log preserves how and why it evolved.
+
 It accepts ticket text and returns:
 
 - one of five categories: `shipping`, `refund`, `damaged_item`, `billing`, or
