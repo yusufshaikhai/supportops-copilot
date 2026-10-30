@@ -7,6 +7,7 @@ from supportops import (
     Urgency,
     classify_ticket,
     compare,
+    load_dataset,
 )
 
 ROOT = Path(__file__).parents[1]
@@ -52,3 +53,12 @@ def test_ml_beats_rules_and_meets_starter_targets() -> None:
     assert result.ml.category_macro_f1 >= 0.80
     assert result.ml.urgent_recall >= 0.90
     assert result.macro_f1_delta > 0
+
+
+def test_fixed_corpora_have_expected_sizes_and_no_overlap() -> None:
+    training = load_dataset(TRAINING_DATASET)
+    evaluation = load_dataset(EVALUATION_DATASET)
+
+    assert len(training) == 100
+    assert len(evaluation) == 50
+    assert {t.text for t in training}.isdisjoint({t.text for t in evaluation})
