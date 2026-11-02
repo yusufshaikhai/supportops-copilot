@@ -424,29 +424,32 @@ The initial per-category recall was:
 | Billing | `0.70` |
 | Account | `0.80` |
 
-After adding the 15 training examples and urgency phrase:
+After adding 15 generalized training examples (not copies of evaluation
+tickets) and the urgency phrase:
 
 | Method | Accuracy | Macro F1 | Urgent recall | Unknown rate |
 | --- | ---: | ---: | ---: | ---: |
 | Keyword rules | `0.24` | `0.34` | `1.00` | `0.72` |
-| TF-IDF + logistic regression | `0.88` | `0.906` | `1.00` | `0.06` |
+| TF-IDF + logistic regression | `0.78` | `0.827` | `1.00` | `0.12` |
 
-The ML model now has 6 category failures, including 3 low-confidence
+The ML model now has 11 category failures, including 6 low-confidence
 rejections. Its per-category recall is:
 
 | Category | Recall |
 | --- | ---: |
-| Shipping | `0.80` |
-| Refund | `0.90` |
+| Shipping | `0.50` |
+| Refund | `0.80` |
 | Damaged item | `1.00` |
-| Billing | `0.80` |
+| Billing | `0.70` |
 | Account | `0.90` |
 
 ### 8. Outcome
 
-Error-driven data improvements halved category failures from 12 to 6, raised
-macro F1 from `0.810` to `0.906`, reduced the unknown rate from `0.12` to
-`0.06`, and restored urgent recall from `0.90` to `1.00`.
+Generalized, error-driven data improvements reduced category failures from 12
+to 11, raised macro F1 from `0.810` to `0.827`, kept the unknown rate at
+`0.12`, and restored urgent recall from `0.90` to `1.00`. Avoiding
+evaluation-ticket paraphrases deliberately trades a larger headline gain for a
+more honest generalization estimate.
 
 The result supports keeping the small conventional classifier. The evidence did
 not justify a lower threshold, new model family, or additional infrastructure.
@@ -456,7 +459,7 @@ not justify a lower threshold, new model family, or additional infrastructure.
 - Training and evaluation examples remain synthetic.
 - The fixed evaluation set has influenced training decisions and is no longer a
   blind final test.
-- Six category failures remain, including three accepted wrong routes.
+- Eleven category failures remain, including five accepted wrong routes.
 - Confidence scores are not calibrated probabilities.
 - Error causes describe observable outcomes, not semantic root causes.
 - The urgency policy still depends on manually reviewed phrases.
