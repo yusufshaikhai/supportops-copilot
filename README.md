@@ -1,7 +1,7 @@
 # SupportOps Copilot
 
-Milestone 2 compares a deterministic rules baseline with a trained text
-classifier for the fictional HarborHome Commerce support team.
+Milestone 3 adds structured error analysis and targeted data-quality
+improvements to the HarborHome Commerce ticket router.
 
 For the reasoning and learning history behind each milestone, read
 [`docs/milestones.md`](docs/milestones.md). The README describes the current
@@ -13,7 +13,7 @@ It accepts ticket text and returns:
   `account`;
 - `urgent` or `normal` priority;
 - a confidence score and the classification method;
-- `unknown` when the rules have no evidence.
+- `unknown` when the selected method has insufficient evidence.
 
 No LLM is used yet. Category routing uses TF-IDF text features and logistic
 regression. Urgency remains an explicit keyword policy because missing urgent
@@ -32,16 +32,17 @@ uv run python supportops.py classify --method rules \
   "My order arrived broken"
 
 uv run python supportops.py compare
+uv run python supportops.py analyze-errors
 
 uv run python -m pytest
 uv run ruff check .
 ```
 
 `compare` trains on `data/training.csv` and evaluates both methods on the fixed
-held-out examples in `data/evaluation.csv`. Misclassified tickets are included
-in the JSON output for error analysis.
+examples in `data/evaluation.csv`. `analyze-errors` reports per-category recall,
+confusion counts, low-confidence rejections, and each failed ticket.
 
-## Milestone 2 architecture
+## Milestone 3 architecture
 
 ```text
 training.csv --> TF-IDF --> logistic regression --+
@@ -50,7 +51,8 @@ ticket text --> validation --> category method ---+--> prediction
                               |                   |
                               +--> urgency rules -+
 
-evaluation.csv --> rules + ML --> metrics + misclassified tickets
+evaluation.csv --> rules + ML --> comparison metrics
+               --> ML error analysis --> recall + confusions + failed tickets
 ```
 
 ### Why this architecture
@@ -68,14 +70,15 @@ what is needed to answer that question.
 - **Urgency stays rule-based:** urgency encodes business risk rather than only
   linguistic similarity. Keep the policy explicit until enough reviewed
   examples support a separate model.
-- **Model trains in process:** the corpus is only 100 rows and training is
+- **Model trains in process:** the corpus is only 115 rows and training is
   cached for the process. Persisting a model artifact would introduce version
   and deployment concerns without measurable benefit yet.
 - **CLI before FastAPI:** there is no browser or external client yet. A CLI
   exercises the complete behavior without committing to an HTTP contract.
 - **Two fixed CSV files:** training and evaluation data are reviewable in Git.
-  The held-out file is never used for fitting. Add a database when users begin
-  creating tickets and feedback through the product.
+  Evaluation rows are never fitted by the model, though their errors now guide
+  iteration. Add a database when users create tickets or feedback in the
+  product.
 - **One module before package layers:** the schema, classifier, evaluator, and
   CLI remain one small cohesive workflow. Split them when the FastAPI boundary
   introduces a second runtime concern.
@@ -83,10 +86,15 @@ what is needed to answer that question.
   explicitly instead of silently entering evaluation results.
 - **Confidence threshold:** low-confidence ML predictions become `unknown` and
   require human review rather than forcing a route.
+- **Structured error analysis:** failures are grouped into threshold rejections
+  and category confusions before data or policy changes are made.
+- **Targeted training examples:** 15 distinct examples cover weak language
+  patterns across all five categories. The evaluation file and confidence
+  threshold remain unchanged.
 
 Alternatives such as an LLM router, vector database, job queue, repository
 interfaces, and tenant configuration are deliberately deferred. None improves
-the milestone 2 comparison.
+the current error-analysis workflow.
 
 ## Evaluation
 
@@ -96,31 +104,32 @@ Each method reports:
 - category macro F1, so every category matters;
 - urgent-ticket recall;
 - unknown prediction rate;
-- the exact held-out tickets it misclassified.
+- the exact evaluation tickets it misclassified.
 
-Starter acceptance targets:
+Milestone 3 acceptance targets:
 
 | Metric | Target |
 | --- | ---: |
-| Category macro F1 | `>= 0.80` |
-| Urgent-ticket recall | `>= 0.90` |
+| Category macro F1 | `>= 0.90` |
+| Urgent-ticket recall | `1.00` |
 | Automatic customer replies | `0` |
 
-Current held-out results:
+Current evaluation results:
 
 | Method | Accuracy | Macro F1 | Urgent recall | Unknown rate |
 | --- | ---: | ---: | ---: | ---: |
 | Keyword rules | `0.24` | `0.34` | `1.00` | `0.72` |
-| TF-IDF + logistic regression | `0.76` | `0.81` | `1.00` | `0.12` |
+| TF-IDF + logistic regression | `0.88` | `0.906` | `1.00` | `0.06` |
 
-The ML model improves macro F1 by `0.47` but still misclassifies or rejects 12
-of 50 tickets. Those errors are the input to the next iteration rather than a
-reason to tune against the held-out labels.
+The ML model improves macro F1 over rules by `0.566`. Targeted training-data
+changes reduced failures from 12 to 6 and low-confidence rejections from 6 to
+3 without lowering the confidence threshold.
 
-The included corpus contains 100 training tickets and 50 held-out tickets.
-It validates the learning and evaluation pipeline but remains synthetic. Before
-claiming business performance, expand it to 200-500 reviewed examples without
-tuning against the held-out set.
+The included corpus contains 115 training tickets and 50 fixed evaluation
+tickets. Because Milestone 3 used evaluation errors to guide improvements, this
+file now serves as a regression and validation set rather than an untouched
+final test. A fresh blind test set is required before claiming generalization or
+business performance.
 
 ## Data schema
 

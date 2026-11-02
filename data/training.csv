@@ -19,6 +19,9 @@ I received no dispatch confirmation,shipping,normal
 Why has my shipment been sitting at the depot,shipping,normal
 Please explain the delivery delay,shipping,normal
 The parcel was stolen from my porch and is missing,shipping,urgent
+Half of the cartons in my shipment have not arrived,shipping,normal
+The courier delivered my order to the neighboring building,shipping,normal
+When should I expect this order to reach my address,shipping,normal
 I changed my mind and want the funds returned,refund,normal
 Please cancel this purchase and reverse it,refund,normal
 How can I send the rug back,refund,normal
@@ -39,6 +42,9 @@ Please provide a prepaid label so I can send this back,refund,normal
 I want to exchange this blanket for another color,refund,normal
 The unwanted item is unused and still boxed,refund,normal
 Why was only part of my purchase refunded,refund,normal
+The unused bedding is unopened and I want to return it,refund,normal
+My returned item was delivered but the credit is still absent,refund,normal
+How many days does a card payment reversal take,refund,normal
 The frame is bent and cannot hang straight,damaged_item,normal
 The cabinet has a deep dent on one side,damaged_item,normal
 The ceramic bowl arrived broken,damaged_item,urgent
@@ -59,6 +65,9 @@ The cushion arrived stained and torn,damaged_item,normal
 The handle came off immediately,damaged_item,urgent
 There are missing pieces in the hardware bag,damaged_item,urgent
 The vase has a chipped rim,damaged_item,normal
+The appliance quit operating a few hours after setup,damaged_item,normal
+The mechanism runs loudly but does not move,damaged_item,normal
+The item stopped functioning on the first day,damaged_item,normal
 The total taken from my bank is higher than checkout showed,billing,normal
 Why do I see two identical charges,billing,urgent
 Please email a receipt for my purchase,billing,normal
@@ -79,6 +88,9 @@ I need the VAT details for this invoice,billing,normal
 My payment is showing as pending twice,billing,urgent
 Can you change the billing name on the receipt,billing,normal
 The installment amount is not what I expected,billing,normal
+Please send documentation showing what I paid,billing,normal
+The same checkout shows two payments still processing,billing,urgent
+The tax total seems incorrectly calculated,billing,normal
 The verification link has expired,account,normal
 I cannot access my profile anymore,account,normal
 Please help me choose a new password,account,normal
@@ -99,3 +111,6 @@ I forgot which email I registered with,account,normal
 Please unlock my profile,account,urgent
 How do I change my communication preferences,account,normal
 I want to update the phone number on my profile,account,normal
+The account activation URL says it is invalid,account,normal
+No password recovery message reached my inbox,account,normal
+The account verification message is missing,account,normal

@@ -297,3 +297,173 @@ them without editing the held-out labels to flatter the score?
 
 After that analysis, the next product boundary is a minimal FastAPI and
 server-rendered review page around the credible prediction workflow.
+
+---
+
+## Milestone 3: error analysis and data quality
+
+### 1. Question
+
+What do the 12 evaluation failures reveal, and can targeted data and policy
+changes improve routing without editing the evaluation tickets or lowering the
+confidence threshold?
+
+### 2. Scope
+
+Included:
+
+- structured ML error analysis;
+- per-category recall and confusion counts;
+- separation of low-confidence rejections from category confusions;
+- confidence and cause fields on exact classification errors;
+- targeted additions to the training corpus;
+- one evidence-based urgency-policy correction;
+- focused regression tests and current-system documentation.
+
+Excluded:
+
+- edits to `data/evaluation.csv`;
+- confidence-threshold tuning;
+- hyperparameter search;
+- transformer or LLM classification;
+- automatic error-cause inference beyond observable model behavior;
+- FastAPI, HTML pages, persistence, and customer integrations.
+
+### 3. Changes
+
+- Added an `analyze-errors` CLI command.
+- Added structured per-category recall, confusion counts, failure causes, and
+  confidence values.
+- Classified ML failures as either `low_confidence_rejection` or
+  `category_confusion`.
+- Added 15 distinct training examples, balanced across the five categories.
+- Expanded the training corpus from 100 to 115 tickets.
+- Added `right now` to the explicit urgency policy after one urgent account
+  ticket was missed.
+- Preserved the evaluation dataset and `0.24` confidence threshold unchanged.
+- Added tests covering the analysis totals, rejection threshold, new urgency
+  phrase, improved metric target, corpus size, and train/evaluation separation.
+
+### 4. Architecture
+
+```text
+training.csv --> TF-IDF --> logistic regression --+
+                                                  |
+evaluation.csv --> classify each ticket ----------+--> predictions
+                                                        |
+                                                        +--> comparison metrics
+                                                        |
+                                                        +--> error analysis
+                                                             |-- category recall
+                                                             |-- confusion counts
+                                                             |-- threshold rejections
+                                                             +-- exact failures
+
+ticket text --> explicit urgency policy --> urgency
+```
+
+### 5. Decisions
+
+**Analyze before changing the model.** The 12 failures split evenly between six
+low-confidence rejections and six accepted predictions for the wrong category.
+That evidence pointed to sparse language coverage rather than a need for a new
+model family.
+
+**Add balanced, distinct training examples.** Three examples per category
+introduced missing language patterns without copying evaluation sentences.
+Balanced additions avoided improving one weak category by distorting the class
+distribution.
+
+**Do not lower the confidence threshold.** A lower threshold would convert some
+`unknown` results into automatic routes without adding evidence. Improving the
+training signal preserves the human-review boundary.
+
+**Keep causes observable.** The report states whether the model rejected a
+prediction or confused categories. Claims such as "ambiguous customer intent"
+or "bad label" still require human judgment and are not guessed by the code.
+
+**Treat `right now` as an urgency-policy gap.** Urgency remains deterministic,
+so the missed phrase belongs in the explicit policy rather than the category
+training corpus.
+
+**Reclassify the evaluation set's role.** Once its errors guide training
+changes, it is no longer an untouched final test. It remains useful as a fixed
+validation and regression set, but a new blind set is required before claiming
+generalization.
+
+### 6. Alternatives
+
+| Alternative | Why deferred | Revisit when |
+| --- | --- | --- |
+| Lower the confidence threshold | It would hide uncertainty rather than improve evidence | A larger calibration set quantifies review cost and routing risk |
+| Hyperparameter search | The failure patterns were explainable data gaps | A larger validation corpus shows the current model has plateaued |
+| Automatic semantic cause labels | The model cannot reliably distinguish ambiguity, missing vocabulary, and bad labels | Human-reviewed error annotations exist |
+| Transformer or LLM router | The simple model still improved substantially from better data | Representative data shows TF-IDF cannot meet the required quality |
+| Fresh blind test immediately | Current work is still synthetic and exploratory | Before making a generalization or business-performance claim |
+
+### 7. Evaluation
+
+Before the changes:
+
+| Metric | Result |
+| --- | ---: |
+| Category accuracy | `0.76` |
+| Category macro F1 | `0.810` |
+| Urgent recall | `0.90` |
+| Unknown rate | `0.12` |
+| Category failures | `12 / 50` |
+| Low-confidence rejections | `6` |
+
+The initial per-category recall was:
+
+| Category | Recall |
+| --- | ---: |
+| Shipping | `0.70` |
+| Refund | `0.70` |
+| Damaged item | `0.90` |
+| Billing | `0.70` |
+| Account | `0.80` |
+
+After adding the 15 training examples and urgency phrase:
+
+| Method | Accuracy | Macro F1 | Urgent recall | Unknown rate |
+| --- | ---: | ---: | ---: | ---: |
+| Keyword rules | `0.24` | `0.34` | `1.00` | `0.72` |
+| TF-IDF + logistic regression | `0.88` | `0.906` | `1.00` | `0.06` |
+
+The ML model now has 6 category failures, including 3 low-confidence
+rejections. Its per-category recall is:
+
+| Category | Recall |
+| --- | ---: |
+| Shipping | `0.80` |
+| Refund | `0.90` |
+| Damaged item | `1.00` |
+| Billing | `0.80` |
+| Account | `0.90` |
+
+### 8. Outcome
+
+Error-driven data improvements halved category failures from 12 to 6, raised
+macro F1 from `0.810` to `0.906`, reduced the unknown rate from `0.12` to
+`0.06`, and restored urgent recall from `0.90` to `1.00`.
+
+The result supports keeping the small conventional classifier. The evidence did
+not justify a lower threshold, new model family, or additional infrastructure.
+
+### 9. Limitations
+
+- Training and evaluation examples remain synthetic.
+- The fixed evaluation set has influenced training decisions and is no longer a
+  blind final test.
+- Six category failures remain, including three accepted wrong routes.
+- Confidence scores are not calibrated probabilities.
+- Error causes describe observable outcomes, not semantic root causes.
+- The urgency policy still depends on manually reviewed phrases.
+- There is no human review UI, persistence, retrieval, or response drafting.
+
+### 10. Next question
+
+Can a minimal FastAPI and server-rendered page make category, urgency,
+confidence, and error-aware human review usable without changing the validated
+classification behavior?
