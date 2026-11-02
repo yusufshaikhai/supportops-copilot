@@ -1,0 +1,101 @@
+text,category,urgency
+The carrier has not updated the parcel location since Monday,shipping,normal
+Can you tell me the expected arrival date for purchase 104,shipping,normal
+My box was left at the wrong building,shipping,normal
+The tracking page still says label created,shipping,normal
+Please redirect the parcel to my office,shipping,normal
+Has the warehouse dispatched my order yet,shipping,normal
+The delivery window passed yesterday,shipping,normal
+I need the courier reference number,shipping,normal
+Part of my order is still in transit,shipping,normal
+The parcel came to my old address,shipping,normal
+My package is missing and I need help immediately,shipping,urgent
+The courier lost my order,shipping,urgent
+Tracking says delivered but nothing is at my door,shipping,urgent
+Where can I collect an attempted delivery,shipping,normal
+Can this purchase arrive before Saturday,shipping,normal
+The second box has not shown up,shipping,normal
+I received no dispatch confirmation,shipping,normal
+Why has my shipment been sitting at the depot,shipping,normal
+Please explain the delivery delay,shipping,normal
+The parcel was stolen from my porch and is missing,shipping,urgent
+I changed my mind and want the funds returned,refund,normal
+Please cancel this purchase and reverse it,refund,normal
+How can I send the rug back,refund,normal
+I no longer need the item and want my money back,refund,normal
+The return reached your warehouse last week,refund,normal
+When will the credit appear in my bank,refund,normal
+I bought the wrong size and need an exchange,refund,normal
+Can I return something after opening the box,refund,normal
+The color is not right so I would like to send it back,refund,normal
+Please reimburse the amount I paid,refund,normal
+I accidentally ordered two and want to cancel one,refund,normal
+What is your thirty day return policy,refund,normal
+The replacement is also unsuitable,refund,normal
+I need a repayment for order 908,refund,normal
+Can store credit be changed back to cash,refund,normal
+The refund has been pending for ten days,refund,normal
+Please provide a prepaid label so I can send this back,refund,normal
+I want to exchange this blanket for another color,refund,normal
+The unwanted item is unused and still boxed,refund,normal
+Why was only part of my purchase refunded,refund,normal
+The frame is bent and cannot hang straight,damaged_item,normal
+The cabinet has a deep dent on one side,damaged_item,normal
+The ceramic bowl arrived broken,damaged_item,urgent
+The fabric is torn along the seam,damaged_item,normal
+The lamp flickers and stops working,damaged_item,normal
+Several screws and brackets were missing,damaged_item,urgent
+The glass top is shattered and unsafe,damaged_item,urgent
+This shelf is defective and leans forward,damaged_item,normal
+The finish is chipped around every edge,damaged_item,normal
+The drawer does not close properly,damaged_item,normal
+One chair leg snapped during assembly,damaged_item,urgent
+The mirror has a long crack across it,damaged_item,urgent
+The motor in the standing desk is faulty,damaged_item,normal
+The table surface is badly scratched,damaged_item,normal
+The box was fine but the product inside was damaged,damaged_item,urgent
+The clock stopped working after one day,damaged_item,normal
+The cushion arrived stained and torn,damaged_item,normal
+The handle came off immediately,damaged_item,urgent
+There are missing pieces in the hardware bag,damaged_item,urgent
+The vase has a chipped rim,damaged_item,normal
+The total taken from my bank is higher than checkout showed,billing,normal
+Why do I see two identical charges,billing,urgent
+Please email a receipt for my purchase,billing,normal
+My debit card keeps being rejected,billing,normal
+The promotional code did not reduce the price,billing,normal
+I need an invoice with my company name,billing,normal
+The sales tax amount looks incorrect,billing,normal
+There is an unauthorized payment on my statement,billing,urgent
+My bank approved the payment but the order failed,billing,normal
+Why was I billed for express service,billing,normal
+The amount on the receipt differs from my statement,billing,normal
+Can I use two gift cards at checkout,billing,normal
+The checkout page will not accept my card,billing,normal
+I was charged after cancelling the purchase,billing,normal
+Please explain this additional fee,billing,normal
+The discount disappeared when I paid,billing,normal
+I need the VAT details for this invoice,billing,normal
+My payment is showing as pending twice,billing,urgent
+Can you change the billing name on the receipt,billing,normal
+The installment amount is not what I expected,billing,normal
+The verification link has expired,account,normal
+I cannot access my profile anymore,account,normal
+Please help me choose a new password,account,normal
+The sign in screen keeps rejecting my details,account,normal
+I need to update the email linked to my account,account,normal
+How can I close my customer profile,account,normal
+I am locked out and need access immediately,account,urgent
+The password recovery message never came,account,normal
+My saved addresses have disappeared,account,normal
+Someone changed the email on my profile,account,urgent
+How do I enable login verification,account,normal
+The website created two profiles for me,account,normal
+I cannot confirm my new email address,account,normal
+Please remove an old saved address,account,normal
+My account page shows another person's name,account,urgent
+The sign in code is not working,account,normal
+I forgot which email I registered with,account,normal
+Please unlock my profile,account,urgent
+How do I change my communication preferences,account,normal
+I want to update the phone number on my profile,account,normal
