@@ -431,9 +431,7 @@ def analyze_errors(
     dataset: Path = DEFAULT_EVALUATION_DATASET,
     training_dataset: Path = DEFAULT_TRAINING_DATASET,
 ) -> ErrorAnalysis:
-    categories = [
-        category for category in Category if category is not Category.UNKNOWN
-    ]
+    categories = [category for category in Category if category is not Category.UNKNOWN]
     totals: Counter[Category] = Counter()
     correct: Counter[Category] = Counter()
     confusions: Counter[tuple[Category, Category]] = Counter()

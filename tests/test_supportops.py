@@ -70,9 +70,7 @@ def test_error_analysis_accounts_for_every_ml_failure() -> None:
         for error in analysis.errors
         if error.cause is ErrorCause.LOW_CONFIDENCE_REJECTION
     )
-    assert {
-        error.cause for error in analysis.errors
-    } == {
+    assert {error.cause for error in analysis.errors} == {
         ErrorCause.LOW_CONFIDENCE_REJECTION,
         ErrorCause.CATEGORY_CONFUSION,
     }
