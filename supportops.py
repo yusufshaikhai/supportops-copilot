@@ -239,7 +239,9 @@ def load_dataset(dataset: Path) -> list[LabeledTicket]:
     return tickets
 
 
-def load_knowledge(dataset: Path = DEFAULT_KNOWLEDGE_DATASET) -> list[KnowledgeDocument]:
+def load_knowledge(
+    dataset: Path = DEFAULT_KNOWLEDGE_DATASET,
+) -> list[KnowledgeDocument]:
     documents: list[KnowledgeDocument] = []
     with dataset.open(newline="", encoding="utf-8") as csv_file:
         reader = csv.DictReader(csv_file)

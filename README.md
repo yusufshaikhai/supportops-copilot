@@ -13,7 +13,10 @@ The CLI and browser workflow accept ticket text and return:
   `account`;
 - `urgent` or `normal` priority;
 - a confidence score and the classification method;
-- `unknown` when the selected method has insufficient evidence;
+- `unknown` when the selected method has insufficient evidence.
+
+The browser workflow additionally returns:
+
 - up to two relevant HarborHome policy records with source citations;
 - an explicit no-evidence state when retrieval is unsupported.
 
