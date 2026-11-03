@@ -35,6 +35,8 @@ def test_review_page_shows_the_classifier_result() -> None:
     assert "Damaged Item" in response.text
     assert "Urgent" in response.text
     assert "Review the suggested route before taking action." in response.text
+    assert "Relevant HarborHome knowledge" in response.text
+    assert "HH-DMG-001" in response.text
 
 
 def test_unknown_prediction_requires_manual_routing() -> None:
@@ -43,6 +45,7 @@ def test_unknown_prediction_requires_manual_routing() -> None:
     assert response.status_code == 200
     assert "Unknown" in response.text
     assert "Needs manual routing" in response.text
+    assert "No relevant knowledge found. Do not answer from memory." in response.text
 
 
 def test_review_page_rejects_invalid_ticket_text() -> None:

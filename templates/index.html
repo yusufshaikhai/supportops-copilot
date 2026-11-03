@@ -85,6 +85,17 @@
         letter-spacing: 0.08em;
         text-transform: uppercase;
       }
+
+      article + article {
+        margin-top: 1.25rem;
+        padding-top: 1.25rem;
+        border-top: 1px solid #d8dee4;
+      }
+
+      .citation {
+        color: #57606a;
+        font-size: 0.9rem;
+      }
     </style>
   </head>
   <body>
@@ -122,6 +133,21 @@
             <dt>Method</dt>
             <dd>{{ prediction.method.value | upper }}</dd>
           </dl>
+        </section>
+
+        <section>
+          <h2>Relevant HarborHome knowledge</h2>
+          {% if knowledge_matches %}
+            {% for match in knowledge_matches %}
+              <article>
+                <h3>{{ match.title }}</h3>
+                <p>{{ match.content }}</p>
+                <p class="citation">Citation: <strong>{{ match.source }}</strong></p>
+              </article>
+            {% endfor %}
+          {% else %}
+            <p class="review-needed">No relevant knowledge found. Do not answer from memory.</p>
+          {% endif %}
         </section>
       {% endif %}
     </main>

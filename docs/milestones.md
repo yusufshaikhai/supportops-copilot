@@ -612,3 +612,163 @@ boundary: adding HTTP and HTML required no classifier changes.
 
 Can HarborHome policy and product knowledge be retrieved with visible citations
 and presented beside the ticket without allowing unsupported answers?
+
+---
+
+## Milestone 5: cited HarborHome knowledge retrieval
+
+### 1. Question
+
+Can the review workflow find relevant HarborHome policy evidence, display its
+source, and return a safe no-evidence state without generating an answer?
+
+### 2. Scope
+
+Included:
+
+- six short HarborHome knowledge records;
+- stable source IDs for citations;
+- TF-IDF document retrieval with cosine similarity;
+- a minimum evidence threshold;
+- at most two retrieved records;
+- cited evidence on the review page;
+- an explicit instruction not to answer from memory when retrieval is empty;
+- retrieval and browser integration tests.
+
+Excluded:
+
+- LLM or template-based response drafting;
+- automatic customer replies;
+- vector databases and embedding APIs;
+- semantic reranking;
+- policy chunking beyond one row per short record;
+- document ingestion pipelines;
+- persistence, reviewer decisions, and audit history;
+- customer-specific knowledge configuration.
+
+### 3. Changes
+
+- Added `data/knowledge.csv` with shipping, refund, damaged-item, billing, and
+  account guidance.
+- Added validated `KnowledgeDocument` and `KnowledgeMatch` schemas.
+- Added `load_knowledge` with schema, empty-data, and duplicate-source checks.
+- Added `retrieve_knowledge` using TF-IDF and cosine similarity.
+- Added a `0.08` minimum score and a two-result limit.
+- Added cited knowledge or a no-evidence warning to the FastAPI review page.
+- Added retrieval tests for a relevant shipping ticket, unrelated text, and
+  the fixed unique source set.
+- Extended endpoint tests to verify a damaged-item citation and the safe empty
+  state.
+
+### 4. Architecture
+
+```text
+knowledge.csv
+     |
+     v
+validated knowledge records
+     |
+     v
+TF-IDF document vectors <--- validated ticket text
+     |                            |
+     +------ cosine similarity ---+
+                   |
+                   v
+        threshold + top-two limit
+                   |
+                   v
+       cited matches or no evidence
+
+browser review = routing prediction + cited knowledge
+```
+
+Routing and retrieval are independent consumers of the same validated ticket.
+
+### 5. Decisions
+
+**Use TF-IDF and cosine similarity.** Scikit-learn is already installed, the
+knowledge set is tiny, and the goal is to learn and verify the retrieval
+boundary. Remote embeddings would add cost, credentials, network failure, and
+versioning before lexical retrieval has failed.
+
+**Retrieve across all documents.** Filtering by the predicted category would
+make one model error suppress potentially relevant knowledge. Independent
+retrieval lets the reviewer compare the routing suggestion with the evidence.
+
+**Use short CSV records.** Six static policies are easy to review in Git and do
+not require file parsers, chunking infrastructure, or a database.
+
+**Cite stable source IDs.** IDs such as `HH-DMG-001` give the reviewer a visible
+reference and create a future boundary for linking to source documents.
+
+**Require minimum evidence.** The retriever returns no records below `0.08`.
+Showing no knowledge is safer than presenting a weak match as policy.
+
+**Limit output to two records.** A reviewer needs focused evidence, not every
+document containing a related word.
+
+**Do not generate an answer.** Retrieval quality can be evaluated directly.
+Draft generation would combine retrieval and language-model behavior, making
+failures harder to attribute.
+
+**Fit the tiny index per request.** Six records train in negligible time and
+there is no invalidation concern. Cache or persist the index after measured
+latency or knowledge volume justifies it.
+
+### 6. Alternatives
+
+| Alternative | Why deferred | Revisit when |
+| --- | --- | --- |
+| Embedding model | Adds model and dependency decisions before lexical retrieval is measured | Reviewed queries show important semantic misses |
+| Vector database | Six records fit in memory | Knowledge volume or tenant isolation requires indexed storage |
+| Category-filtered retrieval | A routing error could hide correct evidence | Category quality is sufficient and cross-category evidence is intentionally excluded |
+| LLM response generation | Retrieval must be trustworthy first | Cited retrieval has a stable evaluation set |
+| Markdown ingestion and chunking | Policies are already short records | Real documents exceed useful retrieval size |
+| Cached or serialized index | Current index creation is negligible | Profiling shows retrieval latency matters |
+
+### 7. Evaluation
+
+The retrieval tests verify:
+
+- a delayed package query returns `HH-SHIP-001` first;
+- every returned match includes a positive similarity score;
+- unrelated text returns no matches;
+- the knowledge set contains six unique source IDs.
+
+The browser tests verify:
+
+- a shattered-item ticket displays `HH-DMG-001`;
+- an unrelated ticket displays `No relevant knowledge found. Do not answer
+  from memory.`
+
+The classifier corpus, threshold, predictions, and evaluation metrics remain
+unchanged.
+
+### 8. Outcome
+
+The reviewer can now see policy evidence beside the routing suggestion and can
+identify exactly which HarborHome record supplied it. Unsupported queries
+produce no evidence instead of a plausible but unrelated policy.
+
+This milestone establishes the retrieval half of retrieval-augmented
+generation without introducing generation. Routing errors and retrieval errors
+remain independently observable.
+
+### 9. Limitations
+
+- The knowledge base contains only six synthetic records.
+- Retrieval is document-level and may return a broader passage than needed.
+- TF-IDF depends on shared vocabulary and does not understand deeper semantic
+  equivalence.
+- The `0.08` threshold is a starter heuristic, not a calibrated business-risk
+  boundary.
+- Source IDs are visible but do not yet link to full policy documents.
+- The index is rebuilt for every request.
+- There is no retrieval evaluation corpus with graded relevance judgments.
+- No response is drafted, approved, edited, rejected, or persisted.
+
+### 10. Next question
+
+Can the system draft a response using only the retrieved HarborHome evidence,
+include its citations, refuse when evidence is missing, and require a reviewer
+to approve, edit, or reject the draft?

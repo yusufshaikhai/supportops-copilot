@@ -1,7 +1,7 @@
 # SupportOps Copilot
 
-Milestone 4 adds a minimal browser review page around the HarborHome Commerce
-ticket router.
+Milestone 5 adds cited HarborHome knowledge retrieval to the browser review
+workflow.
 
 For the reasoning and learning history behind each milestone, read
 [`docs/milestones.md`](docs/milestones.md). The README describes the current
@@ -13,12 +13,15 @@ The CLI and browser workflow accept ticket text and return:
   `account`;
 - `urgent` or `normal` priority;
 - a confidence score and the classification method;
-- `unknown` when the selected method has insufficient evidence.
+- `unknown` when the selected method has insufficient evidence;
+- up to two relevant HarborHome policy records with source citations;
+- an explicit no-evidence state when retrieval is unsupported.
 
 No LLM is used yet. Category routing uses TF-IDF text features and logistic
 regression. Urgency remains an explicit keyword policy because missing urgent
 cases is safety-sensitive and the current corpus is too small to learn that
-policy reliably.
+policy reliably. Knowledge retrieval uses TF-IDF and cosine similarity over six
+short, versioned policy records.
 
 ## Run it
 
@@ -41,15 +44,16 @@ uv run ruff check .
 ```
 
 Open <http://127.0.0.1:8000> to submit a ticket and review its suggested
-category, urgency, confidence, and method. `unknown` predictions are explicitly
-marked for manual routing. The page does not automatically reply to customers
-or persist ticket data.
+category, urgency, confidence, method, and cited policy evidence. `unknown`
+predictions are explicitly marked for manual routing. If retrieval has no
+evidence, the page says not to answer from memory. It does not automatically
+reply to customers or persist ticket data.
 
 `compare` trains on `data/training.csv` and evaluates both methods on the fixed
 examples in `data/evaluation.csv`. `analyze-errors` reports per-category recall,
 confusion counts, low-confidence rejections, and each failed ticket.
 
-## Milestone 4 architecture
+## Milestone 5 architecture
 
 ```text
 training.csv --> TF-IDF --> logistic regression --+
@@ -58,7 +62,9 @@ CLI ticket -----> validation --> category method -+--> prediction
                               |                   |
                               +--> urgency rules -+
 
-browser --> FastAPI form --> same validation and classifier --> HTML review page
+knowledge.csv --> TF-IDF + cosine similarity --> cited policy matches
+
+browser --> FastAPI form --> classifier + retrieval --> HTML review page
 
 evaluation.csv --> rules + ML --> comparison metrics
                --> ML error analysis --> recall + confusions + failed tickets
@@ -66,8 +72,9 @@ evaluation.csv --> rules + ML --> comparison metrics
 
 ### Why this architecture
 
-The current product question is whether the validated classifier can support a
-usable human-review workflow. The architecture adds only the browser boundary.
+The current product question is whether a reviewer can see relevant business
+evidence without allowing the system to invent an answer. The architecture adds
+only a small retrieval boundary.
 
 - **TF-IDF and logistic regression:** this is a strong and inspectable baseline
   for small labeled text datasets. It trains quickly on a laptop and exposes
@@ -92,6 +99,22 @@ usable human-review workflow. The architecture adds only the browser boundary.
 - **Manual decision remains explicit:** known predictions are suggestions and
   `unknown` predictions are marked for manual routing. The UI never sends a
   customer response.
+- **TF-IDF retrieval:** the repository already depends on scikit-learn, and the
+  knowledge base has only six records. Embedding services and vector databases
+  would add infrastructure without improving the current learning goal.
+- **Retrieve across every policy:** retrieval does not trust the predicted
+  category as a filter. A wrong route should not hide a relevant policy.
+- **Evidence threshold and result limit:** only matches scoring at least `0.08`
+  are shown, with at most two results. Below that threshold the safe result is
+  no knowledge.
+- **Stable citations:** every policy row has a source ID such as
+  `HH-SHIP-001`, which is displayed with the retrieved text.
+- **No generated answer:** retrieval supplies evidence only. Grounded response
+  drafting remains a separate milestone with its own evaluation and human
+  approval boundary.
+- **No cached retrieval index yet:** fitting six short records is negligible
+  and avoids cache invalidation. Cache or persist an index only when the
+  knowledge base or measured latency requires it.
 - **Two fixed CSV files:** training and evaluation data are reviewable in Git.
   Evaluation rows are never fitted by the model, though their errors now guide
   iteration. Add a database when users create tickets or feedback in the
@@ -109,9 +132,9 @@ usable human-review workflow. The architecture adds only the browser boundary.
   patterns across all five categories. The evaluation file and confidence
   threshold remain unchanged.
 
-Alternatives such as an LLM router, vector database, job queue, repository
-interfaces, and tenant configuration are deliberately deferred. None improves
-the current single-ticket review workflow.
+Alternatives such as an embedding service, vector database, LLM answer
+generation, job queue, and tenant configuration are deliberately deferred.
+None improves the current six-record retrieval workflow.
 
 ## Evaluation
 
@@ -158,6 +181,14 @@ Both data files contain:
 | `text` | Ticket submitted by the customer |
 | `category` | Expected routing category |
 | `urgency` | Expected `normal` or `urgent` priority |
+
+`data/knowledge.csv` contains:
+
+| Column | Meaning |
+| --- | --- |
+| `source` | Stable citation ID displayed to the reviewer |
+| `title` | Short policy title |
+| `content` | Policy evidence available for retrieval |
 
 ## Change history and next milestone
 
