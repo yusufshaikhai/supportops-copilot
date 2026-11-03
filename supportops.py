@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, f1_score, recall_score
+from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.pipeline import Pipeline
 
 
@@ -104,6 +105,16 @@ class ErrorAnalysis(BaseModel):
     errors: list[ClassificationError]
 
 
+class KnowledgeDocument(BaseModel):
+    source: str = Field(min_length=3)
+    title: str = Field(min_length=3)
+    content: str = Field(min_length=10)
+
+
+class KnowledgeMatch(KnowledgeDocument):
+    score: float = Field(ge=0, le=1)
+
+
 CATEGORY_KEYWORDS = {
     Category.SHIPPING: (
         "shipping",
@@ -194,7 +205,10 @@ URGENT_KEYWORDS = (
 DATA_DIRECTORY = Path(__file__).parent / "data"
 DEFAULT_TRAINING_DATASET = DATA_DIRECTORY / "training.csv"
 DEFAULT_EVALUATION_DATASET = DATA_DIRECTORY / "evaluation.csv"
+DEFAULT_KNOWLEDGE_DATASET = DATA_DIRECTORY / "knowledge.csv"
 ML_CONFIDENCE_THRESHOLD = 0.24
+KNOWLEDGE_SCORE_THRESHOLD = 0.08
+KNOWLEDGE_RESULT_LIMIT = 2
 
 
 def load_dataset(dataset: Path) -> list[LabeledTicket]:
@@ -223,6 +237,72 @@ def load_dataset(dataset: Path) -> list[LabeledTicket]:
     if not tickets:
         raise ValueError(f"{dataset} contains no tickets")
     return tickets
+
+
+def load_knowledge(
+    dataset: Path = DEFAULT_KNOWLEDGE_DATASET,
+) -> list[KnowledgeDocument]:
+    documents: list[KnowledgeDocument] = []
+    with dataset.open(newline="", encoding="utf-8") as csv_file:
+        reader = csv.DictReader(csv_file)
+        required = {"source", "title", "content"}
+        if set(reader.fieldnames or ()) != required:
+            raise ValueError(
+                f"{dataset} must contain exactly: {', '.join(sorted(required))}"
+            )
+
+        for line_number, row in enumerate(reader, start=2):
+            try:
+                document = KnowledgeDocument.model_validate(row)
+            except ValueError as error:
+                raise ValueError(
+                    f"Invalid row {line_number} in {dataset}: {error}"
+                ) from error
+            if any(item.source == document.source for item in documents):
+                raise ValueError(
+                    f"Invalid row {line_number}: duplicate source {document.source}"
+                )
+            documents.append(document)
+
+    if not documents:
+        raise ValueError(f"{dataset} contains no knowledge documents")
+    return documents
+
+
+def retrieve_knowledge(
+    ticket: Ticket,
+    dataset: Path = DEFAULT_KNOWLEDGE_DATASET,
+) -> list[KnowledgeMatch]:
+    documents = load_knowledge(dataset)
+    vectorizer = TfidfVectorizer(
+        lowercase=True,
+        ngram_range=(1, 2),
+        stop_words="english",
+        sublinear_tf=True,
+    )
+    document_vectors = vectorizer.fit_transform(
+        [f"{document.title} {document.content}" for document in documents]
+    )
+    query_vector = vectorizer.transform([ticket.text])
+    scores = cosine_similarity(query_vector, document_vectors)[0]
+
+    matches: list[KnowledgeMatch] = []
+    for index in scores.argsort()[::-1]:
+        score = float(scores[index])
+        if score < KNOWLEDGE_SCORE_THRESHOLD:
+            continue
+        document = documents[int(index)]
+        matches.append(
+            KnowledgeMatch(
+                source=document.source,
+                title=document.title,
+                content=document.content,
+                score=round(score, 3),
+            )
+        )
+        if len(matches) == KNOWLEDGE_RESULT_LIMIT:
+            break
+    return matches
 
 
 def classify_urgency(text: str) -> Urgency:
