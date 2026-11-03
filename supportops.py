@@ -270,14 +270,7 @@ def load_knowledge(dataset: Path = DEFAULT_KNOWLEDGE_DATASET) -> list[KnowledgeD
 def retrieve_knowledge(
     ticket: Ticket,
     dataset: Path = DEFAULT_KNOWLEDGE_DATASET,
-    limit: int = KNOWLEDGE_RESULT_LIMIT,
-    minimum_score: float = KNOWLEDGE_SCORE_THRESHOLD,
 ) -> list[KnowledgeMatch]:
-    if limit < 1:
-        raise ValueError("limit must be at least 1")
-    if not 0 <= minimum_score <= 1:
-        raise ValueError("minimum_score must be between 0 and 1")
-
     documents = load_knowledge(dataset)
     vectorizer = TfidfVectorizer(
         lowercase=True,
@@ -294,7 +287,7 @@ def retrieve_knowledge(
     matches: list[KnowledgeMatch] = []
     for index in scores.argsort()[::-1]:
         score = float(scores[index])
-        if score < minimum_score:
+        if score < KNOWLEDGE_SCORE_THRESHOLD:
             continue
         document = documents[int(index)]
         matches.append(
@@ -305,7 +298,7 @@ def retrieve_knowledge(
                 score=round(score, 3),
             )
         )
-        if len(matches) == limit:
+        if len(matches) == KNOWLEDGE_RESULT_LIMIT:
             break
     return matches
 
