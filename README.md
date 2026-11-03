@@ -74,7 +74,8 @@ uv run uvicorn app:app --reload
 Open <http://127.0.0.1:8000> to create a review. The workflow stores routing
 and evidence first, then requires an explicit **Generate grounded draft**
 action. Drafts are never sent automatically. Reviewers approve, edit, or reject
-them, and <http://127.0.0.1:8000/dashboard> summarizes the current decisions.
+them; a decision is final and the draft becomes read-only.
+<http://127.0.0.1:8000/dashboard> summarizes the current decisions.
 
 SQLite data defaults to `data/supportops.db`. Override it with
 `SUPPORTOPS_DATABASE_PATH`, especially in deployed or test environments.
