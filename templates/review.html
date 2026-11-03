@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Review #{{ review.id }} · SupportOps Copilot{% endblock %}
+
+{% block content %}
+  <h1>Review #{{ review.id }}</h1>
+  <p class="status">Status: <strong>{{ review.status.value | replace("_", " ") | title }}</strong></p>
+  <p><strong>Customer ticket:</strong> {{ review.ticket_text }}</p>
+
+  {% if error %}
+    <p class="error" role="alert">{{ error }}</p>
+  {% endif %}
+
+  <section>
+    <h2>Suggested routing</h2>
+    {% if review.category.value == "unknown" %}
+      <p class="review-needed">Needs manual routing</p>
+    {% else %}
+      <p>Review the suggested route before taking action.</p>
+    {% endif %}
+    <dl>
+      <dt>Category</dt>
+      <dd>{{ review.category.value | replace("_", " ") | title }}</dd>
+      <dt>Urgency</dt>
+      <dd>{{ review.urgency.value | title }}</dd>
+      <dt>Confidence</dt>
+      <dd>{{ "%.1f" | format(review.confidence * 100) }}%</dd>
+      <dt>Method</dt>
+      <dd>{{ review.method.value | upper }}</dd>
+    </dl>
+  </section>
+
+  <section>
+    <h2>Relevant HarborHome knowledge</h2>
+    {% if review.knowledge_matches %}
+      {% for match in review.knowledge_matches %}
+        <article>
+          <h3>{{ match.title }}</h3>
+          <p>{{ match.content }}</p>
+          <p class="citation">Citation: <strong>{{ match.source }}</strong></p>
+        </article>
+      {% endfor %}
+    {% else %}
+      <p class="review-needed">No relevant knowledge found. Do not answer from memory.</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>Grounded response draft</h2>
+    {% if review.draft_text and review.status.value != "drafted" %}
+      <p>Final decision recorded. No response is sent automatically.</p>
+      <p class="draft-text">{{ review.draft_text }}</p>
+      <p class="citation">
+        Citations:
+        {% for citation in review.draft_citations %}
+          <strong>{{ citation }}</strong>{% if not loop.last %}, {% endif %}
+        {% endfor %}
+      </p>
+    {% elif review.draft_text %}
+      <p>Generated with {{ review.draft_model }}. No response is sent automatically.</p>
+      <form method="post" action="/reviews/{{ review.id }}/decision">
+        <label for="edited-draft">Draft response</label>
+        <textarea id="edited-draft" name="edited_draft" minlength="3">{{ review.draft_text }}</textarea>
+        <p class="citation">
+          Citations:
+          {% for citation in review.draft_citations %}
+            <strong>{{ citation }}</strong>{% if not loop.last %}, {% endif %}
+          {% endfor %}
+        </p>
+        <label for="decision-note">Reviewer note</label>
+        <input id="decision-note" name="note" type="text">
+        <div class="actions">
+          <button name="action" value="approve" type="submit">Approve</button>
+          <button name="action" value="edit" type="submit">Save edit</button>
+          <button class="secondary" name="action" value="reject" type="submit">Reject</button>
+        </div>
+      </form>
+    {% elif review.knowledge_matches %}
+      <p>The model receives only the ticket, suggested route, and cited evidence.</p>
+      <form method="post" action="/reviews/{{ review.id }}/draft">
+        <button type="submit">Generate grounded draft</button>
+      </form>
+    {% else %}
+      <p class="review-needed">Drafting is blocked until relevant evidence exists.</p>
+    {% endif %}
+  </section>
+
+  <section>
+    <h2>Audit history</h2>
+    <ol>
+      {% for event in audit_events %}
+        <li>
+          <strong>{{ event.event_type | replace("_", " ") | title }}</strong> · {{ event.created_at }}
+          {% if event.details %}
+            <ul>
+              {% for key, value in event.details.items() %}
+                <li>{{ key | replace("_", " ") | title }}: {{ value }}</li>
+              {% endfor %}
+            </ul>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ol>
+  </section>
+{% endblock %}

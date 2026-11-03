@@ -1,0 +1,154 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, sans-serif;
+  background: #f4f6f8;
+  color: #17202a;
+}
+
+body {
+  margin: 0;
+}
+
+header {
+  background: #24292f;
+}
+
+nav {
+  display: flex;
+  gap: 1rem;
+  width: min(900px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1rem 0;
+}
+
+nav a {
+  color: white;
+  font-weight: 700;
+}
+
+main {
+  width: min(900px, calc(100% - 2rem));
+  margin: 3rem auto;
+}
+
+section {
+  margin-top: 1.5rem;
+  padding: 1.5rem;
+  border: 1px solid #d8dee4;
+  border-radius: 0.75rem;
+  background: white;
+  box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 6%);
+}
+
+label {
+  display: block;
+  margin: 0.75rem 0 0.5rem;
+  font-weight: 700;
+}
+
+textarea,
+input {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #8c959f;
+  border-radius: 0.5rem;
+  font: inherit;
+}
+
+textarea {
+  min-height: 9rem;
+}
+
+button {
+  margin-top: 0.75rem;
+  padding: 0.7rem 1rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: #0969da;
+  color: white;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: #57606a;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.6rem 1rem;
+}
+
+dt {
+  font-weight: 700;
+}
+
+dd {
+  margin: 0;
+}
+
+.error,
+.review-needed {
+  color: #9a2f10;
+  font-weight: 700;
+}
+
+.eyebrow,
+.citation,
+.status {
+  color: #57606a;
+}
+
+.eyebrow {
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.citation {
+  font-size: 0.9rem;
+}
+
+article + article {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid #d8dee4;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+}
+
+.metrics section {
+  display: grid;
+  gap: 0.25rem;
+  margin: 0;
+}
+
+.metrics strong {
+  font-size: 1.75rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #d8dee4;
+  text-align: left;
+}

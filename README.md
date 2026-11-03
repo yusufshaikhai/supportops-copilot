@@ -1,7 +1,7 @@
 # SupportOps Copilot
 
-Milestone 5 adds cited HarborHome knowledge retrieval to the browser review
-workflow.
+Milestones 6 and 7 add grounded response drafting, persistent human decisions,
+audit history, and a review dashboard.
 
 For the reasoning and learning history behind each milestone, read
 [`docs/milestones.md`](docs/milestones.md). The README describes the current
@@ -18,13 +18,15 @@ The CLI and browser workflow accept ticket text and return:
 The browser workflow additionally returns:
 
 - up to two relevant HarborHome policy records with source citations;
-- an explicit no-evidence state when retrieval is unsupported.
+- an explicit no-evidence state when retrieval is unsupported;
+- an optional LLM draft that must cite retrieved sources;
+- approve, edit, or reject actions that are stored in SQLite;
+- an audit history and aggregate review dashboard.
 
-No LLM is used yet. Category routing uses TF-IDF text features and logistic
-regression. Urgency remains an explicit keyword policy because missing urgent
-cases is safety-sensitive and the current corpus is too small to learn that
-policy reliably. Knowledge retrieval uses TF-IDF and cosine similarity over six
-short, versioned policy records.
+Category routing uses TF-IDF text features and logistic regression. Urgency
+remains an explicit keyword policy. Knowledge retrieval uses TF-IDF and cosine
+similarity over six short policy records. Drafting uses a configurable
+OpenAI-compatible endpoint only after a reviewer explicitly requests it.
 
 ## Run it
 
@@ -40,23 +42,49 @@ uv run python supportops.py classify --method rules \
 uv run python supportops.py compare
 uv run python supportops.py analyze-errors
 
+# Hosted OpenAI-compatible endpoint
+export SUPPORTOPS_LLM_API_KEY="..."
+export SUPPORTOPS_LLM_MODEL="gpt-4.1-mini"
+
 uv run uvicorn app:app --reload
 
 uv run python -m pytest
 uv run ruff check .
 ```
 
-Open <http://127.0.0.1:8000> to submit a ticket and review its suggested
-category, urgency, confidence, method, and cited policy evidence. `unknown`
-predictions are explicitly marked for manual routing. If retrieval has no
-evidence, the page says not to answer from memory. It does not automatically
-reply to customers or persist ticket data.
+The default remote base URL is `https://api.openai.com/v1`. Override it with
+`SUPPORTOPS_LLM_BASE_URL` for another compatible service. A hosted endpoint
+receives the ticket and retrieved evidence; use an approved provider or local
+Ollama for sensitive data.
+
+For local drafting on a 16 GB Apple Silicon Mac:
+
+```sh
+brew install ollama
+ollama serve
+ollama pull qwen2.5:7b
+
+export SUPPORTOPS_LLM_BASE_URL="http://localhost:11434/v1"
+export SUPPORTOPS_LLM_MODEL="qwen2.5:7b"
+unset SUPPORTOPS_LLM_API_KEY
+
+uv run uvicorn app:app --reload
+```
+
+Open <http://127.0.0.1:8000> to create a review. The workflow stores routing
+and evidence first, then requires an explicit **Generate grounded draft**
+action. Drafts are never sent automatically. Reviewers approve, edit, or reject
+them; a decision is final and the draft becomes read-only.
+<http://127.0.0.1:8000/dashboard> summarizes the current decisions.
+
+SQLite data defaults to `data/supportops.db`. Override it with
+`SUPPORTOPS_DATABASE_PATH`, especially in deployed or test environments.
 
 `compare` trains on `data/training.csv` and evaluates both methods on the fixed
 examples in `data/evaluation.csv`. `analyze-errors` reports per-category recall,
 confusion counts, low-confidence rejections, and each failed ticket.
 
-## Milestone 5 architecture
+## Milestones 6–7 architecture
 
 ```text
 training.csv --> TF-IDF --> logistic regression --+
@@ -67,7 +95,18 @@ CLI ticket -----> validation --> category method -+--> prediction
 
 knowledge.csv --> TF-IDF + cosine similarity --> cited policy matches
 
-browser --> FastAPI form --> classifier + retrieval --> HTML review page
+browser --> FastAPI --> classifier + retrieval --> SQLite review
+                                                   |
+                             explicit draft action |
+                                                   v
+ticket + route + cited evidence --> OpenAI-compatible LLM
+                                                   |
+                                      citation validation
+                                                   |
+                                                   v
+                                   persisted human-reviewed draft
+
+approve / edit / reject --> audit events --> dashboard
 
 evaluation.csv --> rules + ML --> comparison metrics
                --> ML error analysis --> recall + confusions + failed tickets
@@ -75,14 +114,13 @@ evaluation.csv --> rules + ML --> comparison metrics
 
 ### Why this architecture
 
-The current product question is whether a reviewer can see relevant business
-evidence without allowing the system to invent an answer. The architecture adds
-only a small retrieval boundary.
+The current product question is whether grounded drafts and reviewer feedback
+can become a complete, auditable support workflow without automatic sending.
 
 - **TF-IDF and logistic regression:** this is a strong and inspectable baseline
   for small labeled text datasets. It trains quickly on a laptop and exposes
-  class probabilities. A transformer or hosted LLM would add cost and
-  operational complexity before the dataset justifies it.
+  class probabilities. A transformer or hosted LLM router would add cost and
+  operational complexity before the routing dataset justifies it.
 - **Rules remain available:** deleting the old method would remove the benchmark
   needed to prove the ML model improves routing.
 - **Urgency stays rule-based:** urgency encodes business risk rather than only
@@ -94,14 +132,12 @@ only a small retrieval boundary.
 - **FastAPI after the CLI boundary was stable:** the browser now calls the same
   `Ticket` validation and `classify_ticket` function instead of introducing a
   second prediction path.
-- **Server-rendered HTML:** one Jinja template covers the current form and
-  result. React, a JSON API, and client-side state would add no value yet.
-- **No database:** the page reviews one submitted ticket and returns the result
-  immediately. Persistence starts when approve, edit, reject, and audit history
-  become product requirements.
+- **Server-rendered HTML:** a shared base template covers the form, review
+  detail, and dashboard. React, a JSON API, and client-side state add no value
+  to the current workflow.
 - **Manual decision remains explicit:** known predictions are suggestions and
-  `unknown` predictions are marked for manual routing. The UI never sends a
-  customer response.
+  `unknown` predictions are marked for manual routing. Drafting requires a
+  separate action, and the UI never sends a customer response.
 - **TF-IDF retrieval:** the repository already depends on scikit-learn, and the
   knowledge base has only six records. Embedding services and vector databases
   would add infrastructure without improving the current learning goal.
@@ -112,19 +148,28 @@ only a small retrieval boundary.
   no knowledge.
 - **Stable citations:** every policy row has a source ID such as
   `HH-SHIP-001`, which is displayed with the retrieved text.
-- **No generated answer:** retrieval supplies evidence only. Grounded response
-  drafting remains a separate milestone with its own evaluation and human
-  approval boundary.
+- **OpenAI-compatible HTTP boundary:** one small `httpx` client supports hosted
+  APIs and local Ollama without a provider SDK. Remote endpoints require an API
+  key; localhost does not.
+- **Grounding checks after generation:** a draft must contain at least one
+  retrieved source ID and cannot cite a source outside the supplied evidence.
+  Invalid drafts fail explicitly and are recorded in the audit history.
+- **SQLite persistence:** the standard library database is enough for one local
+  deployment and makes review state, feedback, and audit events durable.
+- **Post-redirect-get workflow:** creating reviews, drafts, and decisions
+  redirects to stable review URLs, avoiding accidental form resubmission.
+- **Append-only audit events:** review creation, draft success or failure, and
+  approve/edit/reject decisions remain inspectable.
+- **Server-rendered dashboard:** aggregate counts and acceptance rate require no
+  frontend framework or analytics service.
+- **Real module boundaries:** routing/retrieval remain in `supportops.py`,
+  external model behavior lives in `drafting.py`, persistence lives in
+  `storage.py`, and `app.py` orchestrates them.
 - **No cached retrieval index yet:** fitting six short records is negligible
   and avoids cache invalidation. Cache or persist an index only when the
   knowledge base or measured latency requires it.
-- **Two fixed CSV files:** training and evaluation data are reviewable in Git.
-  Evaluation rows are never fitted by the model, though their errors now guide
-  iteration. Add a database when users create tickets or feedback in the
-  product.
-- **One module before package layers:** the schema, classifier, evaluator, and
-  CLI remain one small cohesive workflow. Split them when the FastAPI boundary
-  introduces a second runtime concern.
+- **Versioned CSV inputs:** training, evaluation, and knowledge data remain
+  reviewable in Git. Mutable review and feedback state belongs in SQLite.
 - **Pydantic at input boundaries:** invalid or incomplete tickets fail
   explicitly instead of silently entering evaluation results.
 - **Confidence threshold:** low-confidence ML predictions become `unknown` and
@@ -135,9 +180,9 @@ only a small retrieval boundary.
   patterns across all five categories. The evaluation file and confidence
   threshold remain unchanged.
 
-Alternatives such as an embedding service, vector database, LLM answer
-generation, job queue, and tenant configuration are deliberately deferred.
-None improves the current six-record retrieval workflow.
+Alternatives such as a provider SDK, PostgreSQL, ORM, background queue, React,
+automatic sending, and tenant configuration are deliberately deferred. The
+current local workflow does not require them.
 
 ## Evaluation
 
@@ -175,6 +220,19 @@ file now serves as a regression and validation set rather than an untouched
 final test. A fresh blind test set is required before claiming generalization or
 business performance.
 
+Milestones 6–7 add no classifier-quality claim. Their checks cover:
+
+- OpenAI-compatible request and response behavior;
+- missing and unsupported citation rejection;
+- remote API-key requirements and keyless local Ollama;
+- SQLite review, draft, decision, and audit persistence;
+- approve, edit, and reject dashboard metrics;
+- browser workflows and visible configuration failures.
+
+The full suite contains 22 deterministic tests. A real `qwen2.5:7b` Ollama run
+on an M3 MacBook Air with 16 GB RAM produced a grounded draft citing
+`HH-DMG-001`.
+
 ## Data schema
 
 Both data files contain:
@@ -192,6 +250,13 @@ Both data files contain:
 | `source` | Stable citation ID displayed to the reviewer |
 | `title` | Short policy title |
 | `content` | Policy evidence available for retrieval |
+
+SQLite contains:
+
+| Table | Meaning |
+| --- | --- |
+| `reviews` | Ticket, prediction, evidence, draft, model, status, and timestamps |
+| `audit_events` | Review creation, draft outcomes, and reviewer decisions |
 
 ## Change history and next milestone
 
