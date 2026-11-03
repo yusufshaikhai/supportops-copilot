@@ -1,13 +1,13 @@
 # SupportOps Copilot
 
-Milestone 3 adds structured error analysis and targeted data-quality
-improvements to the HarborHome Commerce ticket router.
+Milestone 4 adds a minimal browser review page around the HarborHome Commerce
+ticket router.
 
 For the reasoning and learning history behind each milestone, read
 [`docs/milestones.md`](docs/milestones.md). The README describes the current
 system; the milestone log preserves how and why it evolved.
 
-It accepts ticket text and returns:
+The CLI and browser workflow accept ticket text and return:
 
 - one of five categories: `shipping`, `refund`, `damaged_item`, `billing`, or
   `account`;
@@ -34,22 +34,31 @@ uv run python supportops.py classify --method rules \
 uv run python supportops.py compare
 uv run python supportops.py analyze-errors
 
+uv run uvicorn app:app --reload
+
 uv run python -m pytest
 uv run ruff check .
 ```
+
+Open <http://127.0.0.1:8000> to submit a ticket and review its suggested
+category, urgency, confidence, and method. `unknown` predictions are explicitly
+marked for manual routing. The page does not automatically reply to customers
+or persist ticket data.
 
 `compare` trains on `data/training.csv` and evaluates both methods on the fixed
 examples in `data/evaluation.csv`. `analyze-errors` reports per-category recall,
 confusion counts, low-confidence rejections, and each failed ticket.
 
-## Milestone 3 architecture
+## Milestone 4 architecture
 
 ```text
 training.csv --> TF-IDF --> logistic regression --+
                                                   |
-ticket text --> validation --> category method ---+--> prediction
+CLI ticket -----> validation --> category method -+--> prediction
                               |                   |
                               +--> urgency rules -+
+
+browser --> FastAPI form --> same validation and classifier --> HTML review page
 
 evaluation.csv --> rules + ML --> comparison metrics
                --> ML error analysis --> recall + confusions + failed tickets
@@ -57,9 +66,8 @@ evaluation.csv --> rules + ML --> comparison metrics
 
 ### Why this architecture
 
-The current product question is whether a small trained model handles varied
-customer language better than keyword rules. The architecture changes only
-what is needed to answer that question.
+The current product question is whether the validated classifier can support a
+usable human-review workflow. The architecture adds only the browser boundary.
 
 - **TF-IDF and logistic regression:** this is a strong and inspectable baseline
   for small labeled text datasets. It trains quickly on a laptop and exposes
@@ -73,8 +81,17 @@ what is needed to answer that question.
 - **Model trains in process:** the corpus is only 115 rows and training is
   cached for the process. Persisting a model artifact would introduce version
   and deployment concerns without measurable benefit yet.
-- **CLI before FastAPI:** there is no browser or external client yet. A CLI
-  exercises the complete behavior without committing to an HTTP contract.
+- **FastAPI after the CLI boundary was stable:** the browser now calls the same
+  `Ticket` validation and `classify_ticket` function instead of introducing a
+  second prediction path.
+- **Server-rendered HTML:** one Jinja template covers the current form and
+  result. React, a JSON API, and client-side state would add no value yet.
+- **No database:** the page reviews one submitted ticket and returns the result
+  immediately. Persistence starts when approve, edit, reject, and audit history
+  become product requirements.
+- **Manual decision remains explicit:** known predictions are suggestions and
+  `unknown` predictions are marked for manual routing. The UI never sends a
+  customer response.
 - **Two fixed CSV files:** training and evaluation data are reviewable in Git.
   Evaluation rows are never fitted by the model, though their errors now guide
   iteration. Add a database when users create tickets or feedback in the
@@ -94,7 +111,7 @@ what is needed to answer that question.
 
 Alternatives such as an LLM router, vector database, job queue, repository
 interfaces, and tenant configuration are deliberately deferred. None improves
-the current error-analysis workflow.
+the current single-ticket review workflow.
 
 ## Evaluation
 
