@@ -47,7 +47,16 @@
 
   <section>
     <h2>Grounded response draft</h2>
-    {% if review.draft_text %}
+    {% if review.draft_text and review.status.value != "drafted" %}
+      <p>Final decision recorded. No response is sent automatically.</p>
+      <p class="draft-text">{{ review.draft_text }}</p>
+      <p class="citation">
+        Citations:
+        {% for citation in review.draft_citations %}
+          <strong>{{ citation }}</strong>{% if not loop.last %}, {% endif %}
+        {% endfor %}
+      </p>
+    {% elif review.draft_text %}
       <p>Generated with {{ review.draft_model }}. No response is sent automatically.</p>
       <form method="post" action="/reviews/{{ review.id }}/decision">
         <label for="edited-draft">Draft response</label>
