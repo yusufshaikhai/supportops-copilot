@@ -9,6 +9,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, Field
 
+from drafting import CITATION_PATTERN
 from supportops import Category, KnowledgeMatch, Method, Prediction, Ticket, Urgency
 
 DEFAULT_DATABASE_PATH = Path(__file__).parent / "data" / "supportops.db"
@@ -214,11 +215,17 @@ def save_draft(
     path: Path | None = None,
 ) -> ReviewRecord:
     with _connect(path) as connection:
-        if not connection.execute(
-            "SELECT 1 FROM reviews WHERE id = ?",
+        row = connection.execute(
+            "SELECT status FROM reviews WHERE id = ?",
             (review_id,),
-        ).fetchone():
+        ).fetchone()
+        if not row:
             raise KeyError(review_id)
+        if row["status"] not in {
+            ReviewStatus.READY_TO_DRAFT.value,
+            ReviewStatus.DRAFTED.value,
+        }:
+            raise ValueError("This review cannot be drafted in its current status.")
         connection.execute(
             """
             UPDATE reviews
@@ -241,7 +248,7 @@ def save_draft(
             connection,
             review_id,
             "draft_created",
-            {"model": model, "citations": citations},
+            {"model": model, "citations": citations, "draft": text},
         )
     review = get_review(review_id, path)
     if review is None:
@@ -276,28 +283,55 @@ def record_decision(
     if not review.draft_text:
         raise ValueError("A review decision requires a draft.")
 
+    if review.status is not ReviewStatus.DRAFTED:
+        raise ValueError("This review already has a final decision.")
+
     draft_text = review.draft_text
+    citations = review.draft_citations
+    details: dict[str, object] = {"note": note.strip()}
     if decision is ReviewDecision.APPROVE:
         status = ReviewStatus.APPROVED
     elif decision is ReviewDecision.EDIT:
         if not edited_draft or len(edited_draft.strip()) < 3:
             raise ValueError("An edited draft must contain at least three characters.")
         draft_text = edited_draft.strip()
+        citations = sorted(set(CITATION_PATTERN.findall(draft_text)))
+        allowed = {match.source for match in review.knowledge_matches}
+        if not citations:
+            raise ValueError("An edited draft must cite a retrieved source.")
+        if invalid := set(citations) - allowed:
+            raise ValueError(
+                f"Edited draft cites unsupported sources: {', '.join(sorted(invalid))}"
+            )
+        details.update(
+            original_draft=review.draft_text,
+            edited_draft=draft_text,
+            citations=citations,
+        )
         status = ReviewStatus.EDITED
     else:
         status = ReviewStatus.REJECTED
 
     with _connect(path) as connection:
-        connection.execute(
+        cursor = connection.execute(
             """
             UPDATE reviews
             SET draft_text = ?,
+                draft_citations_json = ?,
                 status = ?,
                 updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-            WHERE id = ?
+            WHERE id = ? AND status = ?
             """,
-            (draft_text, status.value, review_id),
+            (
+                draft_text,
+                json.dumps(citations),
+                status.value,
+                review_id,
+                ReviewStatus.DRAFTED.value,
+            ),
         )
+        if cursor.rowcount != 1:
+            raise ValueError("This review already has a final decision.")
         _insert_audit(
             connection,
             review_id,
@@ -306,7 +340,7 @@ def record_decision(
                 ReviewDecision.EDIT: "draft_edited",
                 ReviewDecision.REJECT: "draft_rejected",
             }[decision],
-            {"note": note.strip()},
+            details,
         )
     updated = get_review(review_id, path)
     if updated is None:

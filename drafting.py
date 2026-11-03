@@ -40,12 +40,18 @@ class LLMSettings(BaseModel):
             raise DraftingConfigurationError(
                 "Set SUPPORTOPS_LLM_API_KEY for a remote LLM endpoint."
             )
-        return cls(
-            base_url=base_url,
-            model=os.getenv("SUPPORTOPS_LLM_MODEL", DEFAULT_LLM_MODEL),
-            api_key=api_key,
-            timeout_seconds=float(os.getenv("SUPPORTOPS_LLM_TIMEOUT", "30")),
-        )
+        try:
+            return cls(
+                base_url=base_url,
+                model=os.getenv("SUPPORTOPS_LLM_MODEL", DEFAULT_LLM_MODEL),
+                api_key=api_key,
+                timeout_seconds=float(os.getenv("SUPPORTOPS_LLM_TIMEOUT", "30")),
+            )
+        except (ValueError, ValidationError) as error:
+            raise DraftingConfigurationError(
+                "SUPPORTOPS_LLM_* settings are invalid; the timeout must be a "
+                "positive number and the model and base URL must not be empty."
+            ) from error
 
 
 class DraftResult(BaseModel):

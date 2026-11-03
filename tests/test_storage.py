@@ -92,3 +92,33 @@ def test_dashboard_summarizes_approve_edit_and_reject_feedback(
     assert metrics.edited == 1
     assert metrics.rejected == 1
     assert metrics.acceptance_rate == pytest.approx(0.667)
+
+
+def test_final_decisions_are_immutable_and_edits_keep_original_and_citations(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "supportops.db"
+    review = create_shipping_review(database)
+    original = "We will review the carrier scans [HH-SHIP-001]."
+    save_draft(review.id, original, ["HH-SHIP-001"], "test-model", database)
+
+    with pytest.raises(ValueError, match="cite"):
+        record_decision(
+            review.id, ReviewDecision.EDIT, "No citation here.", path=database
+        )
+    with pytest.raises(ValueError, match="unsupported"):
+        record_decision(
+            review.id, ReviewDecision.EDIT, "Fake claim [HH-FAKE-999].", path=database
+        )
+
+    edited_text = "Updated reply [HH-SHIP-001]."
+    record_decision(review.id, ReviewDecision.EDIT, edited_text, path=database)
+    event = list_audit_events(review.id, database)[0]
+    assert event.details["original_draft"] == original
+    assert event.details["edited_draft"] == edited_text
+
+    with pytest.raises(ValueError, match="final decision"):
+        record_decision(review.id, ReviewDecision.REJECT, path=database)
+    with pytest.raises(ValueError, match="cannot be drafted"):
+        save_draft(review.id, original, ["HH-SHIP-001"], "test-model", database)
+    assert dashboard_metrics(database).edited == 1

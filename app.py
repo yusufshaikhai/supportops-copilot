@@ -12,6 +12,7 @@ from drafting import (
     generate_grounded_draft,
 )
 from storage import (
+    ReviewStatus,
     ReviewDecision,
     ReviewRecord,
     create_review,
@@ -107,6 +108,14 @@ def draft_review(
             request,
             review,
             "A draft cannot be generated without relevant knowledge.",
+            409,
+        )
+
+    if review.status not in {ReviewStatus.READY_TO_DRAFT, ReviewStatus.DRAFTED}:
+        return _render_review(
+            request,
+            review,
+            "A review with a final decision cannot be redrafted.",
             409,
         )
 
