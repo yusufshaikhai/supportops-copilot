@@ -470,3 +470,145 @@ not justify a lower threshold, new model family, or additional infrastructure.
 Can a minimal FastAPI and server-rendered page make category, urgency,
 confidence, and error-aware human review usable without changing the validated
 classification behavior?
+
+---
+
+## Milestone 4: server-rendered ticket review
+
+### 1. Question
+
+Can the existing classifier support a usable browser-based human review
+workflow without duplicating prediction logic or introducing persistence?
+
+### 2. Scope
+
+Included:
+
+- a FastAPI application;
+- a browser form for one customer ticket;
+- server-rendered category, urgency, confidence, and method;
+- an explicit manual-routing state for `unknown`;
+- server-side ticket validation;
+- endpoint tests for the form, known routes, unknown routes, and invalid input;
+- current architecture and operating instructions.
+
+Excluded:
+
+- ticket persistence and audit history;
+- approve, edit, or reject actions;
+- authentication and authorization;
+- automatic customer replies;
+- knowledge retrieval and citations;
+- response drafting;
+- React or another client-side framework;
+- background jobs, queues, and external integrations.
+
+### 3. Changes
+
+- Added `app.py` with `GET /` and `POST /review`.
+- Added one Jinja template containing the form, result, manual-review state,
+  and minimal responsive styling.
+- Reused the existing `Ticket` schema and `classify_ticket` function.
+- Returned an explicit `422` page when submitted text violates the existing
+  ticket contract.
+- Added FastAPI, Uvicorn, Jinja, multipart form parsing, and HTTP endpoint-test
+  dependencies.
+- Added four endpoint behavior tests.
+- Added browser startup and workflow instructions to the README.
+
+### 4. Architecture
+
+```text
+browser
+   |
+   | GET /
+   v
+FastAPI --> Jinja form
+   ^
+   | POST /review
+   |
+ticket text --> Ticket validation --> classify_ticket
+                                      |-- TF-IDF category model
+                                      +-- explicit urgency policy
+                                               |
+                                               v
+                                      Jinja review result
+```
+
+The CLI, evaluation workflow, and browser all call the same classification
+boundary.
+
+### 5. Decisions
+
+**Reuse the classifier directly.** FastAPI is only a delivery boundary. A
+separate service class or HTTP-specific prediction implementation would risk
+behavior drift without separating a real responsibility.
+
+**Use server-rendered HTML.** The page submits one form and displays one result.
+Jinja and ordinary HTML provide the complete workflow without client state,
+JavaScript build tooling, or a frontend deployment.
+
+**Keep one application module.** Two routes and one template do not justify a
+package hierarchy, routers, dependency injection, or repository interfaces.
+
+**Keep requests synchronous.** Classification trains once per process and is
+cached; individual predictions are local and fast. A queue would only add
+latency and operational state.
+
+**Return the result directly from the POST.** There is no stored review that a
+redirect could retrieve. Add POST-redirect-GET when persistence gives the
+result a stable identifier.
+
+**Preserve human authority.** The interface calls every known route a
+suggestion and marks `unknown` for manual routing. It does not imply that a
+model decision was approved or acted upon.
+
+**Keep styling in the template.** One page does not justify a static asset
+pipeline. Extract CSS when multiple pages share it.
+
+### 6. Alternatives
+
+| Alternative | Why deferred | Revisit when |
+| --- | --- | --- |
+| React or another SPA | One form has no meaningful client state | Multiple interactive review views need shared client behavior |
+| JSON API plus separate frontend | There is no second consumer | An integration or independent frontend needs a stable API |
+| Database | No review state is created or updated | Approve, edit, reject, feedback, or audit history is added |
+| Background queue | Classification is local and fast | Work becomes slow, remote, or retryable |
+| Authentication | The app is still a local learning workflow | It is deployed to users or exposes customer data |
+| Package and router layers | There are only two cohesive routes | A second runtime domain creates a real module boundary |
+
+### 7. Evaluation
+
+The endpoint tests verify:
+
+- the review form loads;
+- a damaged urgent ticket displays the classifier result;
+- an unrelated ticket displays `unknown` and requires manual routing;
+- invalid ticket text returns a visible validation error with status `422`.
+
+The existing classifier, error-analysis, corpus, and metric tests remain
+unchanged. Milestone 4 does not claim a model-quality improvement.
+
+### 8. Outcome
+
+The validated classification behavior is now usable from a browser without
+duplicating the model path. The page exposes the information a reviewer needs
+for one routing decision and keeps uncertainty visible.
+
+The milestone also confirms that the CLI-first design created a reusable domain
+boundary: adding HTTP and HTML required no classifier changes.
+
+### 9. Limitations
+
+- Submitted tickets and predictions disappear after the response.
+- There is no reviewer identity, decision, feedback, or audit trail.
+- Refreshing the result page can resubmit the form.
+- The page supports one ticket at a time and has no queue.
+- The app has no authentication or production deployment configuration.
+- Predictions remain based on synthetic training data.
+- There is no knowledge retrieval, citation, or drafted response.
+
+### 10. Next question
+
+Can HarborHome policy and product knowledge be retrieved with visible citations
+and presented beside the ticket without allowing unsupported answers?
