@@ -1,155 +1,19 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>SupportOps Copilot</title>
-    <style>
-      :root {
-        color-scheme: light;
-        font-family: system-ui, sans-serif;
-        background: #f4f6f8;
-        color: #17202a;
-      }
+{% extends "base.html" %}
 
-      body {
-        margin: 0;
-      }
+{% block title %}Review ticket · SupportOps Copilot{% endblock %}
 
-      main {
-        width: min(720px, calc(100% - 2rem));
-        margin: 3rem auto;
-      }
+{% block content %}
+  <h1>Support ticket review</h1>
+  <p>Route the ticket, retrieve policy evidence, and create a draft for human review.</p>
 
-      section {
-        margin-top: 1.5rem;
-        padding: 1.5rem;
-        border: 1px solid #d8dee4;
-        border-radius: 0.75rem;
-        background: white;
-        box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 6%);
-      }
-
-      label {
-        display: block;
-        margin-bottom: 0.5rem;
-        font-weight: 700;
-      }
-
-      textarea {
-        box-sizing: border-box;
-        width: 100%;
-        min-height: 9rem;
-        padding: 0.75rem;
-        border: 1px solid #8c959f;
-        border-radius: 0.5rem;
-        font: inherit;
-      }
-
-      button {
-        margin-top: 0.75rem;
-        padding: 0.7rem 1rem;
-        border: 0;
-        border-radius: 0.5rem;
-        background: #0969da;
-        color: white;
-        font: inherit;
-        font-weight: 700;
-        cursor: pointer;
-      }
-
-      dl {
-        display: grid;
-        grid-template-columns: max-content 1fr;
-        gap: 0.6rem 1rem;
-      }
-
-      dt {
-        font-weight: 700;
-      }
-
-      dd {
-        margin: 0;
-      }
-
-      .error,
-      .review-needed {
-        color: #9a2f10;
-        font-weight: 700;
-      }
-
-      .eyebrow {
-        color: #57606a;
-        font-size: 0.85rem;
-        font-weight: 700;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      article + article {
-        margin-top: 1.25rem;
-        padding-top: 1.25rem;
-        border-top: 1px solid #d8dee4;
-      }
-
-      .citation {
-        color: #57606a;
-        font-size: 0.9rem;
-      }
-    </style>
-  </head>
-  <body>
-    <main>
-      <p class="eyebrow">HarborHome Commerce</p>
-      <h1>Support ticket review</h1>
-      <p>Paste a customer ticket to get a suggested route. A person still makes the final decision.</p>
-
-      <section>
-        <form method="post" action="/review">
-          <label for="ticket-text">Customer ticket</label>
-          <textarea id="ticket-text" name="ticket_text" minlength="3" required>{{ ticket_text }}</textarea>
-          {% if error %}
-            <p class="error" role="alert">{{ error }}</p>
-          {% endif %}
-          <button type="submit">Review ticket</button>
-        </form>
-      </section>
-
-      {% if prediction %}
-        <section aria-live="polite">
-          <h2>Suggested routing</h2>
-          {% if prediction.category.value == "unknown" %}
-            <p class="review-needed">Needs manual routing</p>
-          {% else %}
-            <p>Review the suggested route before taking action.</p>
-          {% endif %}
-          <dl>
-            <dt>Category</dt>
-            <dd>{{ prediction.category.value | replace("_", " ") | title }}</dd>
-            <dt>Urgency</dt>
-            <dd>{{ prediction.urgency.value | title }}</dd>
-            <dt>Confidence</dt>
-            <dd>{{ "%.1f" | format(prediction.confidence * 100) }}%</dd>
-            <dt>Method</dt>
-            <dd>{{ prediction.method.value | upper }}</dd>
-          </dl>
-        </section>
-
-        <section>
-          <h2>Relevant HarborHome knowledge</h2>
-          {% if knowledge_matches %}
-            {% for match in knowledge_matches %}
-              <article>
-                <h3>{{ match.title }}</h3>
-                <p>{{ match.content }}</p>
-                <p class="citation">Citation: <strong>{{ match.source }}</strong></p>
-              </article>
-            {% endfor %}
-          {% else %}
-            <p class="review-needed">No relevant knowledge found. Do not answer from memory.</p>
-          {% endif %}
-        </section>
+  <section>
+    <form method="post" action="/review">
+      <label for="ticket-text">Customer ticket</label>
+      <textarea id="ticket-text" name="ticket_text" minlength="3" required>{{ ticket_text }}</textarea>
+      {% if error %}
+        <p class="error" role="alert">{{ error }}</p>
       {% endif %}
-    </main>
-  </body>
-</html>
+      <button type="submit">Create review</button>
+    </form>
+  </section>
+{% endblock %}

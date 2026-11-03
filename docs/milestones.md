@@ -772,3 +772,329 @@ remain independently observable.
 Can the system draft a response using only the retrieved HarborHome evidence,
 include its citations, refuse when evidence is missing, and require a reviewer
 to approve, edit, or reject the draft?
+
+---
+
+## Milestone 6: grounded response drafting
+
+### 1. Question
+
+Can an LLM draft a useful customer response using only retrieved HarborHome
+evidence, include valid citations, and fail safely when evidence or
+configuration is missing?
+
+### 2. Scope
+
+Included:
+
+- a configurable OpenAI-compatible chat-completions client;
+- hosted endpoints with bearer-token authentication;
+- keyless localhost support for Ollama;
+- `gpt-4.1-mini` as the default hosted model;
+- an explicit generate-draft action;
+- ticket, suggested route, and retrieved evidence as model inputs;
+- prompt instructions that treat customer text as untrusted data;
+- required citation validation;
+- rejection of missing or unsupported citations;
+- visible and audited drafting failures;
+- a real local `qwen2.5:7b` validation.
+
+Excluded:
+
+- automatic drafting on ticket submission;
+- automatic customer sending;
+- tool-calling agents;
+- multi-turn model conversations;
+- model fine-tuning;
+- streaming responses;
+- asynchronous jobs and retry queues;
+- semantic verification of every generated claim.
+
+### 3. Changes
+
+- Added `drafting.py`.
+- Added environment-based LLM base URL, model, API key, and timeout settings.
+- Added a direct `httpx` request to the OpenAI-compatible
+  `/chat/completions` endpoint.
+- Added a grounded system instruction and structured ticket/evidence input.
+- Added `DraftResult` with text, citations, and model metadata.
+- Required at least one `[HH-...]` citation from the supplied evidence.
+- Rejected drafts with no citation or a source outside the retrieved records.
+- Added an explicit draft button to persisted reviews with evidence.
+- Blocked drafting for reviews without evidence.
+- Added unit and browser tests for success, citation failure, configuration
+  failure, and no-evidence refusal.
+
+### 4. Architecture
+
+```text
+persisted review
+   |-- ticket text
+   |-- suggested route
+   +-- cited knowledge
+            |
+            v
+explicit Generate action
+            |
+            v
+OpenAI-compatible /chat/completions
+            |
+            v
+draft text --> citation extraction --> allowed-source validation
+                                        | success
+                                        v
+                                   persisted draft
+```
+
+The model never receives credentials, database state, unrelated policies, or
+an ability to send a response.
+
+### 5. Decisions
+
+**Use an OpenAI-compatible HTTP contract.** The selected hosted model is
+`gpt-4.1-mini`, but the application should not depend on one vendor SDK. The
+same request path works with OpenAI, GitHub Models, compatible gateways, and
+local Ollama.
+
+**Allow keyless localhost only.** Remote endpoints fail configuration when no
+API key is set. Local Ollama can run without manufacturing a fake credential.
+
+**Require an explicit drafting action.** Ticket classification and retrieval
+remain usable without model credentials or model cost. The reviewer controls
+when an external or local model runs.
+
+**Treat ticket text as untrusted.** The system instruction tells the model to
+ignore instructions embedded in the customer ticket and use it only as data.
+
+**Validate citations after generation.** Prompt instructions alone are not a
+guarantee. The application rejects drafts with no HarborHome citation or with a
+source that was not supplied to the model.
+
+**Surface failures instead of falling back.** Configuration, HTTP, response
+shape, and citation errors are visible to the reviewer and recorded. A
+template-shaped fake success would hide that the model failed.
+
+**Keep model calls synchronous for now.** Drafting is reviewer-initiated and
+the local learning deployment has one user. Add a queue when latency,
+concurrency, retries, or provider limits become operational requirements.
+
+### 6. Alternatives
+
+| Alternative | Why deferred | Revisit when |
+| --- | --- | --- |
+| Provider SDK | Direct HTTP covers the small contract and multiple runtimes | Streaming, tool calls, or provider-specific features are required |
+| Automatic drafting | Would spend model resources and create text before human intent | Reviewers consistently request drafts for most eligible tickets |
+| Deterministic response template | Would not teach or evaluate grounded generation | A business flow requires guaranteed wording |
+| Background queue | One local reviewer can wait for the request | Concurrent users or retryable remote failures exist |
+| Full claim-level grounding judge | Requires another model or structured policy representation | Citation presence is insufficient for measured quality |
+
+### 7. Evaluation
+
+Deterministic tests verify:
+
+- the emitted OpenAI-compatible request contains the configured model and
+  supplied source IDs;
+- a valid cited response is accepted;
+- missing citations are rejected;
+- unsupported citations are rejected;
+- remote endpoints require an API key;
+- localhost works without an API key;
+- browser configuration errors are visible and audited.
+
+Real local validation used:
+
+- MacBook Air with Apple M3 and 16 GB RAM;
+- Ollama `0.40.14`;
+- `qwen2.5:7b`;
+- `http://localhost:11434/v1`.
+
+The model produced a damaged-item response citing only `HH-DMG-001`.
+
+### 8. Outcome
+
+SupportOps can now generate a useful cited draft from retrieved evidence using
+either a hosted or local model. Drafting is blocked without evidence, and
+invalid model citations do not enter the review workflow as successful output.
+
+The local run also proved that the portable model boundary works without cloud
+credentials on the available hardware.
+
+### 9. Limitations
+
+- Citation validation proves source membership, not that every sentence is
+  entailed by the cited text.
+- Prompt injection resistance is instruction-based and not a complete security
+  boundary.
+- Draft latency occurs inside the HTTP request.
+- There is no provider retry or circuit breaker.
+- The default model and prompt have no formal quality benchmark.
+- A local 7B model can be less capable than the hosted default.
+- Hosted endpoints receive ticket text and retrieved evidence.
+- No response is ever sent to a customer.
+
+### 10. Next question
+
+Can review state, drafts, decisions, failures, and feedback be persisted and
+summarized without introducing unnecessary infrastructure?
+
+---
+
+## Milestone 7: persistent review, audit, and evaluation dashboard
+
+### 1. Question
+
+Can SupportOps preserve each review and human decision, expose its audit
+history, and summarize workflow outcomes for the HarborHome deployment?
+
+### 2. Scope
+
+Included:
+
+- SQLite persistence;
+- stable review URLs;
+- persisted ticket, prediction, evidence, draft, citations, model, and status;
+- approve, edit, and reject decisions;
+- optional reviewer notes;
+- append-only audit events;
+- recorded draft failures;
+- recent-review listing;
+- aggregate status counts and acceptance rate;
+- browser and storage behavior tests.
+
+Excluded:
+
+- authentication, reviewer identity, and permissions;
+- multi-tenant data isolation;
+- database migrations across released schema versions;
+- PostgreSQL or managed database deployment;
+- concurrent work assignment and queues;
+- outbound helpdesk or email delivery;
+- advanced analytics, charts, and exports.
+
+### 3. Changes
+
+- Added `storage.py` using the Python `sqlite3` standard library.
+- Added `reviews` and `audit_events` tables.
+- Added statuses for ready-to-draft, needs-evidence, drafted, approved, edited,
+  and rejected.
+- Changed ticket submission to create a review and redirect to a stable URL.
+- Persisted model output only after citation validation.
+- Added approve, edit, and reject forms.
+- Added audit events for review creation, draft success, draft failure, and
+  reviewer decisions.
+- Added `/dashboard` with workflow counts, acceptance rate, and recent reviews.
+- Extracted shared HTML structure and CSS now that the application has multiple
+  pages.
+- Ignored local SQLite database and sidecar files in Git.
+
+### 4. Architecture
+
+```text
+POST /review
+     |
+     v
+route + retrieve --> reviews row --> review_created event
+                         |
+                         +--> draft success --> draft_created event
+                         |
+                         +--> draft failure --> draft_failed event
+                         |
+                         +--> approve/edit/reject --> decision event
+
+reviews + audit_events --> review detail
+reviews                --> dashboard metrics + recent list
+```
+
+### 5. Decisions
+
+**Use SQLite.** One local HarborHome deployment needs durable state, not a
+database server. SQLite provides transactions, constraints, and queryable data
+with no service to operate.
+
+**Use the standard library instead of an ORM.** The schema has two tables and a
+small set of explicit queries. An ORM would add a dependency and hide the SQL
+being learned.
+
+**Persist retrieved evidence with the review.** Re-running retrieval later
+could produce different evidence after policy changes. The audit record should
+preserve what the reviewer actually saw.
+
+**Use post-redirect-get.** Reviews now have stable IDs, so mutations redirect to
+their canonical page and browser refresh does not repeat the action.
+
+**Keep audit events append-only.** Current review state answers what is true
+now; events explain how it became true.
+
+**Count edited drafts as accepted.** Dashboard acceptance rate treats approved
+and edited drafts as useful outcomes and rejected drafts as unsuccessful.
+
+**Extract templates and CSS only after multiple pages exist.** The form, review
+detail, and dashboard now share navigation and styling, making a base template
+and static stylesheet justified.
+
+### 6. Alternatives
+
+| Alternative | Why deferred | Revisit when |
+| --- | --- | --- |
+| PostgreSQL | Requires another service for one local user | Multiple processes or deployments need shared writes |
+| ORM and migration framework | Two explicit tables remain easier to inspect | Schema evolution and relationships become frequent |
+| Event sourcing | Current state plus audit events answers the product questions | Rebuilding state from events becomes a requirement |
+| Analytics platform | Seven counts and one rate fit in SQL | Product usage needs segmentation, trends, or exports |
+| User accounts | The application is still a local learning deployment | Real reviewers or customer data access the system |
+
+### 7. Evaluation
+
+Storage tests verify:
+
+- review creation and ready-to-draft state;
+- draft persistence with model and citations;
+- edited draft persistence;
+- ordered audit history;
+- approved, edited, and rejected dashboard counts;
+- acceptance-rate calculation.
+
+Browser tests verify:
+
+- invalid ticket validation;
+- stable review redirects;
+- persisted routing and knowledge;
+- no-evidence draft blocking;
+- draft creation;
+- approval;
+- dashboard metrics;
+- visible and audited LLM configuration failure.
+
+Together with the existing routing and retrieval tests, the deterministic suite
+contains 22 tests.
+
+### 8. Outcome
+
+SupportOps now covers the complete local human-in-the-loop workflow:
+
+1. validate and route a ticket;
+2. retrieve cited policy evidence;
+3. optionally generate a grounded draft;
+4. approve, edit, or reject it;
+5. inspect the audit history;
+6. review aggregate workflow outcomes.
+
+No action sends a response automatically.
+
+### 9. Limitations
+
+- SQLite is local to one deployment and has no tenant isolation.
+- The schema has no migration mechanism yet.
+- Reviewer identity and permissions are absent.
+- Acceptance rate reflects current final status rather than historical decision
+  transitions.
+- Audit details are JSON without a versioned event schema.
+- Dashboard metrics have no date range or category filters.
+- Drafts and tickets contain synthetic data only; production PII controls are
+  not implemented.
+- There is no integration with a helpdesk, commerce system, or outbound email.
+
+### 10. Next question
+
+Can the same product be deployed for CloudDesk B2B SaaS using customer-specific
+configuration, SLA rules, account context, incident knowledge, and integration
+adapters without forking the application?

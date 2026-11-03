@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard · SupportOps Copilot{% endblock %}
+
+{% block content %}
+  <h1>Review dashboard</h1>
+  <div class="metrics">
+    <section><strong>{{ metrics.total_reviews }}</strong><span>Total reviews</span></section>
+    <section><strong>{{ metrics.ready_to_draft }}</strong><span>Ready to draft</span></section>
+    <section><strong>{{ metrics.needs_evidence }}</strong><span>Needs evidence</span></section>
+    <section><strong>{{ metrics.drafted }}</strong><span>Awaiting decision</span></section>
+    <section><strong>{{ metrics.approved }}</strong><span>Approved</span></section>
+    <section><strong>{{ metrics.edited }}</strong><span>Edited</span></section>
+    <section><strong>{{ metrics.rejected }}</strong><span>Rejected</span></section>
+    <section><strong>{{ "%.1f" | format(metrics.acceptance_rate * 100) }}%</strong><span>Acceptance rate</span></section>
+  </div>
+
+  <section>
+    <h2>Recent reviews</h2>
+    {% if reviews %}
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Review</th>
+            <th scope="col">Category</th>
+            <th scope="col">Status</th>
+            <th scope="col">Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for review in reviews %}
+            <tr>
+              <td><a href="/reviews/{{ review.id }}">#{{ review.id }}</a></td>
+              <td>{{ review.category.value | replace("_", " ") | title }}</td>
+              <td>{{ review.status.value | replace("_", " ") | title }}</td>
+              <td>{{ review.created_at }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p>No reviews yet.</p>
+    {% endif %}
+  </section>
+{% endblock %}
